@@ -2,6 +2,7 @@
 import time
 from socket import *
 import threading
+from struct import *
 #UDP server
 class Server():
     def __init__(self):
@@ -27,9 +28,9 @@ class Server():
         UDPServerSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         #TODO......
         UDPServerSocket.settimeout(0.2)
+
         message= bytes.fromhex("feedbeef")
-        #TODO : 02 OR 2 ?
-        message+= bytes.fromhex("2")
+        message+= bytes.fromhex("02")
         message+=self.serverPort.to_bytes(2,byteorder='big')
         print("Server started,listening on IP address 172.1.0.4 ")
         while True:
@@ -44,12 +45,12 @@ class Server():
         TCPServerSocket.listen(5)
         while True:
             connection, address = TCPServerSocket.accept()
-            self.all_teams[address]=connection
+            #self.all_teams[address]=connection
+            self.all_teams[connection.fileno()] = connection
             #TODO: settimeout(60)?
             #connection.settimeout(60)
             threading.Thread(target = self.listenToClient,args = (connection,address)).start()
-        for connection in self.all_teams.keys():
-            connection.send("Welcome to Keyboard Spamming Battle Royale.")
+
 
     def listenToClient(self, connection, address):
         while True:
@@ -67,3 +68,20 @@ class Server():
             except:
                 connection.close()
                 return False
+
+    def startGame(self):
+        message="Welcome to Keyboard Spamming Battle Royale./n "
+        message+="Group 1:/n==/n "
+        for val in self.group1.values():
+            message+=val+'/n'
+        message+="Group 2:/n==/n"
+        for val in self.group2.values():
+            message+=val+'/n/n'
+        message='Start pressing keys on your keyboard as fast as you can!!/n'
+        for connection in self.all_teams.values():
+            connection.sendall(bytes(message,'UTF-8'))
+
+
+
+
+
