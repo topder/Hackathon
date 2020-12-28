@@ -23,9 +23,9 @@ class Server():
     #     tcp_thread.start()
 
     def udp_broadcast(self):
-        UDPServerSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        UDPServerSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        UDPServerSocket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        UDPServerSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+        #UDPServerSocket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
+        UDPServerSocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         #TODO......
         UDPServerSocket.settimeout(0.2)
 

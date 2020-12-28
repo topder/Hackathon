@@ -19,15 +19,19 @@ class Client():
         print("Client started, listening for offer requests...")
         while not self.connected:
             data, addr = client.recvfrom(self.bufferSize)
-            self.serverIP=addr
+            self.serverIP=addr[0]
             print("Received offer from: "+str(addr)+ " ,attempting to connect... ")
             received=data.hex()
-            if received[:8]=='feedbeef' and received[8:10]=='2':
-                self.severPort=received[:10]
-
+            if received[:8]=='feedbeef' and received[8:10]=='02':
+                #int.from_bytes(b'\xfc\x00', byteorder='big', signed=False)
+                self.severPort=int(received[10:],16)
+                self.connected=True
+                self.ConnectingToAServer()
 
     def ConnectingToAServer(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print(self.serverIP)
+        print(self.severPort)
         client.connect((self.serverIP, self.severPort))
         client.sendall(bytes(self.name+'/n','UTP-8'))
         data = client.recv(self.bufferSize)
