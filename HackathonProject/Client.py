@@ -1,6 +1,7 @@
 import socket
 import threading
 import time
+import getch
 
 from pynput import keyboard
 
@@ -14,7 +15,6 @@ class Client():
         self.connected=False
         self.name=name
         self.stop_game=False
-        self.socket=None
 
     def receive_message(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -42,9 +42,8 @@ class Client():
         data = client.recv(self.bufferSize)
         print(data.decode('UTF-8'))
         thread_listener=threading.Thread(target=self.tcp_listener,args=(client,)).start()
-        thread_game = threading.Thread(target=self.GameMode).start()
-        #TODO ONLY FOR TESTING
-        self.socket=client
+        thread_game = threading.Thread(target=self.GameMode,args=(client,)).start()
+
 
     def tcp_listener(self,client):
         while True:
@@ -62,15 +61,8 @@ class Client():
 
 
 
-    def GameMode(self):
+    def GameMode(self,client):
         while self.stop_game:
-            listener = keyboard.Listener(on_press=self.on_press)
-            listener.start()
+            char = getch.getch()
+            client.send(bytes(char,'UTF-8'))
 
-    def on_press(self ,key):
-        try:
-            print("key_board")
-            self.socket.send(format(key),'UTF-8')
-            time.sleep(0.05)
-        except AttributeError:
-            print('special key {0} pressed'.format(key))
