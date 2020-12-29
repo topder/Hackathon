@@ -1,7 +1,6 @@
 import socket
 import threading
-
-
+import time
 class Client():
     def __init__(self, name):
         self.clientIP = "127.0.0.1"

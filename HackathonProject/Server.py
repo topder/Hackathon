@@ -95,6 +95,8 @@ class Server():
             connection.send(bytes(message,'UTF-8'))
 
 
-
+    def startServer(self):
+        threading.Thread(target=self.tcp_thread).start()
+        threading.Thread(target=self.udp_broadcast_thread).start()
 
 
