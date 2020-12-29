@@ -1,6 +1,9 @@
 import socket
 import threading
 import time
+
+from pynput import keyboard
+
 class Client():
     def __init__(self, name):
         self.clientIP = "127.0.0.1"
@@ -11,11 +14,15 @@ class Client():
         self.connected=False
         self.name=name
         self.stop_game=False
+        self.socket=None
 
     def receive_message(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         # UDP
-        client.bind(("", self.clientPort))
+        try:
+            client.bind(("", self.clientPort))
+        except:
+            pass
         print("Client started, listening for offer requests...")
         while not self.connected:
             data, addr = client.recvfrom(self.bufferSize)
@@ -35,16 +42,35 @@ class Client():
         data = client.recv(self.bufferSize)
         print(data.decode('UTF-8'))
         thread_listener=threading.Thread(target=self.tcp_listener,args=(client,)).start()
-        thread_game = threading.Thread(target=self.GameMode, args=(lambda: self.stop_game,)).start()
-
+        thread_game = threading.Thread(target=self.GameMode).start()
+        #TODO ONLY FOR TESTING
+        self.socket=client
 
     def tcp_listener(self,client):
         while True:
             data = client.recv(self.bufferSize)
+            data=data.decode('UTF-8')
+            print(data)
             if data == 'Game over!':
                 self.stop_game=True
+                data = client.recv(self.bufferSize)
+                data=data.decode('UTF-8')
+                print(data)
                 client.close()
+                print("Server disconnected, listening for offer requests...")
                 break
 
-    def GameMode(self,F):
-        pass
+
+
+    def GameMode(self):
+        while self.stop_game:
+            listener = keyboard.Listener(on_press=self.on_press)
+            listener.start()
+
+    def on_press(self ,key):
+        try:
+            print("key_board")
+            self.socket.send(format(key),'UTF-8')
+            time.sleep(0.05)
+        except AttributeError:
+            print('special key {0} pressed'.format(key))
