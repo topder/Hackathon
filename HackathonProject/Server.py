@@ -105,20 +105,15 @@ class Server():
 
     def runGame(self,connection,message):
         connection.send(bytes(message, 'UTF-8'))
-        start_time = time.time()
-        while True:
-            new_time = time.time()
-            if new_time-start_time>=10:
-                    connection.send(bytes("Game over!", 'UTF-8'))
-                    break
-            else:
-                connection.settimeout(10)
-                try:
-                    data = connection.recv(self.bufferSize)
-                    if data:
-                        self.all_teams[connection][2]+=1
-                except:
-                    print("time out")
+        connection.settimeout(10)
+        try:
+            while True:
+                data = connection.recv(self.bufferSize)
+                if data:
+                    self.all_teams[connection][2]+=1
+        except:
+            connection.send(bytes("Game over!", 'UTF-8'))
+
 
     def resultsGame(self,connection):
         max_g1=0

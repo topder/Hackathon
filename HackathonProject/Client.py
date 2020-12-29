@@ -3,7 +3,6 @@ import threading
 import time
 import getch
 
-from pynput import keyboard
 
 class Client():
     def __init__(self, name):
@@ -59,10 +58,8 @@ class Client():
                 print("Server disconnected, listening for offer requests...")
                 break
 
-
-
     def GameMode(self,client):
-        while self.stop_game:
+        while not self.stop_game:
             char = getch.getch()
             client.send(bytes(char,'UTF-8'))
-
+            pass
