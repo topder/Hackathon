@@ -1,7 +1,7 @@
 import socket
 import threading
 import time
-import getch
+#import getch
 
 
 class Client():
@@ -62,4 +62,5 @@ class Client():
         while not self.stop_game:
             char = getch.getch()
             client.send(bytes(char,'UTF-8'))
-            pass
+
+
