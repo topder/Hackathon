@@ -3,7 +3,6 @@ from Server import Server
 from Client import Client
 
 s=Server()
-s.startServer()
-c = Client("AA")
-client_thread = threading.Thread(target=c.receive_message).start()
-
+server_thread = threading.Thread(target=s.startServer).start()
+c = Client()
+client_thread = threading.Thread(target=c.startClient).start()

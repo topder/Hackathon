@@ -1,85 +1,71 @@
 import threading
 import time
+from _thread import start_new_thread
 from socket import *
-from threading import  Lock
 from struct import *
+from scapy.all import get_if_addr
+
 #UDP server
 class Server():
     def __init__(self):
-        self.serverIP = "192.168.80.1"
-        self.serverPort = 12345
+        self.serverIP= get_if_addr("eth1")
+        self.serverPort = 2056
+        self.UdpPort=13119
+        self.Game=False
         self.bufferSize = 2048
-        self.group_number=1
+        self.group_number=0
         self.all_teams={}
-        self.results={}
-        self.mutex=Lock()
-
-
-    def udp_broadcast_thread(self):
-        broadcast_thread=threading.Thread(target=self.udp_broadcast)
-        broadcast_thread.start()
-
-    def tcp_thread(self):
-        tcp_thread=threading.Thread(target=self.tcp_listener)
-        tcp_thread.start()
 
     def udp_broadcast(self):
-        start_time =time.time()
-        UDPServerSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+        UDPServerSocket = socket(AF_INET, SOCK_DGRAM)
         UDPServerSocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         #TODO......
-        UDPServerSocket.settimeout(0.2)
         message= bytes.fromhex("feedbeef")
         message+= bytes.fromhex("02")
         message+=self.serverPort.to_bytes(2,byteorder='big')
-        print("Server started,listening on IP address 172.1.0.4\n")
-        while True:
-            end_time=time.time()
-            if end_time-start_time<=10:
-                UDPServerSocket.sendto(message, ('<broadcast>',13117))
-                time.sleep(1)
-            else:
-                UDPServerSocket.close()
-                break
+        threading.Timer(1.0, self.udp_broadcast).start()
+        UDPServerSocket.sendto(message, ('<broadcast>',self.UdpPort))
+        print("Server started,listening on IP address "+str(self.serverIP)+"\n")
 
-    def tcp_listener(self):
+
+    def create_Socket_TCP(self):
+        self.Game=True
+        self.group_number=0
+        self.all_teams={}
         TCPServerSocket = socket(AF_INET,SOCK_STREAM)
-        TCPServerSocket.bind((self.serverIP, self.serverPort))
-        # TODO 10 seconds after the server was starte?
-        #TODO 5?
-        TCPServerSocket.listen(4)
+        TCPServerSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         TCPServerSocket.settimeout(10)
-        try:
-            while True:
-                connection, address = TCPServerSocket.accept()
-                #self.all_teams[address]=connection
-                self.all_teams[connection] =["",0,0]
-                threading.Thread(target = self.listenToClient,args = (connection,address)).start()
-        except:
-            print("time out")
-        self.startGame()
-
-
-    def listenToClient(self, connection, address):
+        TCPServerSocket.bind(('', self.serverPort))
+        TCPServerSocket.listen(1)
         while True:
             try:
-                data = connection.recv(self.bufferSize)
-                if data:
-                    if self.group_number%2==0:
-                      self.all_teams[connection][0]=data.decode('UTF-8')
-                      self.all_teams[connection][1]=1
-                    else:
-                        self.all_teams[connection][0]=data.decode('UTF-8')
-                        self.all_teams[connection][1] =2
-                    self.group_number+=1
-                    break
-                else:
-                    raise error('Client disconnected')
+                connection, address = TCPServerSocket.accept()
+                self.all_teams[connection] =["",0,0]
+                start_new_thread(self.get_client_name, (connection,))
             except:
-                connection.close()
+                break
+        #TODO
+        self.start_game(TCPServerSocket)
 
-    def startGame(self):
-        list_thread=[]
+
+    def get_client_name(self, connection):
+        try:
+            data = connection.recv(self.bufferSize)
+            if data:
+                if self.group_number%2==0:
+                  self.all_teams[connection][0]=data.decode('UTF-8')
+                  self.all_teams[connection][1]=1
+                else:
+                    self.all_teams[connection][0]=data.decode('UTF-8')
+                    self.all_teams[connection][1] =2
+                self.group_number+=1
+            else:
+                raise error('Client disconnected')
+        except:
+            pass
+
+
+    def start_game(self,TCPServerSocket):
         message="Welcome to Keyboard Spamming Battle Royale.\n "
         message+="Group 1:\n==\n "
         for val in self.all_teams.values():
@@ -91,29 +77,27 @@ class Server():
                 message+=str(val[0])+'\n\n'
         message+='Start pressing keys on your keyboard as fast as you can!!\n'
         for connection in self.all_teams.keys():
-            t=threading.Thread(target=self.runGame,args=(connection,message,))
-            list_thread.append(t)
-            t.start()
-        for t in list_thread:
-            t.join()
+            start_new_thread(self.run_game, (connection,message,))
+        time.sleep(10)
+        self.Game=False
         for connection in self.all_teams.keys():
-             threading.Thread(target=self.resultsGame,args=(connection,)).start()
+            self.resultsGame(connection)
+            connection.shutdown(SHUT_RDWR)
+            connection.close()
+        TCPServerSocket.shutdown(SHUT_RDWR)
+        TCPServerSocket.close()
+        print("Game over, sending out offer requests...")
 
-    def startServer(self):
-        threading.Thread(target=self.tcp_thread).start()
-        threading.Thread(target=self.udp_broadcast_thread).start()
-
-    def runGame(self,connection,message):
-        connection.send(bytes(message, 'UTF-8'))
-        connection.settimeout(10)
-        try:
-            while True:
+    def run_game(self,connection,message):
+        connection.send(message.encode('utf-8'))
+        while self.Game:
+            try:
                 data = connection.recv(self.bufferSize)
                 if data:
                     self.all_teams[connection][2]+=1
-        except:
-            connection.send(bytes("Game over!", 'UTF-8'))
-
+            except:
+                connection.send("Game Over!".encode('utf-8'))
+                break
 
     def resultsGame(self,connection):
         max_g1=0
@@ -128,7 +112,7 @@ class Server():
             winner=2
         elif max_g1>max_g2:
             winner=1
-        message="Group 1 typed in "+ str(max_g1)+ " characters. Group 2 typed in " + str(max_g1)+" characters.\n"
+        message="Group 1 typed in "+ str(max_g1)+ " characters. Group 2 typed in " + str(max_g2)+" characters.\n"
         if winner==0:
             message+="It's a tie! Everybody wins!!\n"
         else:
@@ -137,8 +121,14 @@ class Server():
             for val in self.all_teams.values():
                 if val[1]==winner:
                     message+=val[0]+'\n'
+        connection.send(message.encode('utf-8'))
 
-        connection.send(bytes(message, 'UTF-8'))
-        connection.close()
-        print("Game over, sending out offer requests...")
+    def run_server(self):
+        while True:
+            self.udp_broadcast()
+            self.create_Socket_TCP()
+
+
+s=Server()
+s.run_server()
 

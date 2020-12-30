@@ -1,66 +1,94 @@
 import socket
 import threading
 import time
-#import getch
+import getch
+from _thread import *
+
+import sys
+import select
+import tty
+import termios
 
 
 class Client():
-    def __init__(self, name):
-        self.clientIP = "127.0.0.1"
-        self.clientPort = 13117
+    def __init__(self):
+        self.clientPort = 13119
         self.bufferSize = 2048
-        self.serverIP=""
-        self.severPort=""
-        self.connected=False
-        self.name=name
-        self.stop_game=False
+        self.serverIP = ""
+        self.serverPort = ""
+        self.connected = False
+        self.name = "AA"
+        self.stop_game = False
+        self.clientSocket = None
 
     def receive_message(self):
-        client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        # UDP
-        try:
+        while True:
+            client=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             client.bind(("", self.clientPort))
-        except:
-            pass
-        print("Client started, listening for offer requests...")
-        while not self.connected:
-            data, addr = client.recvfrom(self.bufferSize)
-            self.serverIP=addr[0]
-            print("Received offer from: "+str(addr[0])+ " ,attempting to connect... ")
-            received=data.hex()
-            if received[:8]=='feedbeef' and received[8:10]=='02':
-                #int.from_bytes(b'\xfc\x00', byteorder='big', signed=False)
-                self.severPort=int(received[10:],16)
-                self.connected=True
+            try:
+                data, addr = client.recvfrom(self.bufferSize)
+            except:
+                pass
+            client.close()
+            received = data.hex()
+            if received[:8] == 'feedbeef' and received[8:10] == '02':
+                self.serverIP = addr[0]
+                self.serverPort = int(received[10:], 16)
                 self.ConnectingToAServer()
+                break
+            else:
+                print("")
 
     def ConnectingToAServer(self):
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((self.serverIP, self.severPort))
-        client.send(bytes(self.name+'\n','UTF-8'))
+        print("Received offer from: " + str(self.serverIP) + " ,attempting to connect... ")
+        self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.clientSocket.connect((self.serverIP,int(self.serverPort)))
+            self.clientSocket.send(self.name.encode('utf-8'))
+            data = self.clientSocket.recv(self.bufferSize)
+            print(data.decode('UTF-8'))
+            self.GameMode(self.clientSocket)
+            self.End_Game(self.clientSocket)
+        except:
+            print("")
+
+    def End_Game(self, client):
         data = client.recv(self.bufferSize)
-        print(data.decode('UTF-8'))
-        thread_listener=threading.Thread(target=self.tcp_listener,args=(client,)).start()
-        thread_game = threading.Thread(target=self.GameMode,args=(client,)).start()
+        data = data.decode('UTF-8')
+        print(data)
+        print("Server disconnected, listening for offer requests...")
 
 
-    def tcp_listener(self,client):
+
+    def isData(self):
+        return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
+
+    def GameMode(self, client):
+        start_time=time.time()
+        old_settings = termios.tcgetattr(sys.stdin)
+        try:
+            tty.setcbreak(sys.stdin.fileno())
+            while True:
+                if time.time()-start_time<=10:
+                    if self.isData():
+                        char = sys.stdin.read(1)
+                        client.send(char.encode('utf-8'))
+                else:
+                    break
+        finally:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+
+
+    def startClient(self):
         while True:
-            data = client.recv(self.bufferSize)
-            data=data.decode('UTF-8')
-            print(data)
-            if data == 'Game over!':
-                self.stop_game=True
-                data = client.recv(self.bufferSize)
-                data=data.decode('UTF-8')
-                print(data)
-                client.close()
-                print("Server disconnected, listening for offer requests...")
-                break
+            print("Client started, listening for offer requests...")
+            self.receive_message()
 
-    def GameMode(self,client):
-        while not self.stop_game:
-            char = getch.getch()
-            client.send(bytes(char,'UTF-8'))
+
+c=Client()
+c.startClient()
+
 
 
