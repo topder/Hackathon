@@ -9,6 +9,12 @@ import select
 import tty
 import termios
 
+class color:
+    Red = '\u001b[31;1m'
+    RESET = '\033[0m'
+
+
+
 class Client():
     def __init__(self,team_name):
         self.clientPort = 13117
@@ -105,7 +111,7 @@ class Client():
         :return:
         """
         while True:
-            print("Client started, listening for offer requests...")
+            print(f"{color.Red}Client started, listening for offer requests...{color.RESET}")
             self.receive_message()
 
 
