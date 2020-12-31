@@ -4,6 +4,8 @@ from _thread import start_new_thread
 from socket import *
 from struct import *
 from scapy.all import get_if_addr
+#------------GIT----------------#
+#https://github.com/topder/Hackathon
 
 #UDP server
 class Server():
@@ -101,9 +103,12 @@ class Server():
         time.sleep(10)
         self.Game=False
         for connection in self.all_teams.keys():
-            self.resultsGame(connection)
-            connection.shutdown(SHUT_RDWR)
-            connection.close()
+            try:
+                self.resultsGame(connection)
+                connection.shutdown(SHUT_RDWR)
+                connection.close()
+            except:
+                continue
         TCPServerSocket.shutdown(SHUT_RDWR)
         TCPServerSocket.close()
         print("Game over, sending out offer requests...")
