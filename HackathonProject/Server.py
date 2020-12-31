@@ -7,28 +7,35 @@ from scapy.all import get_if_addr
 
 #UDP server
 class Server():
-    def __init__(self):
+    def __init__(self,serverPort):
         self.serverIP= get_if_addr("eth1")
-        self.serverPort = 2056
-        self.UdpPort=13119
+        self.serverPort = serverPort
+        self.UdpPort=13117
         self.Game=False
         self.bufferSize = 2048
         self.group_number=0
         self.all_teams={}
 
     def udp_broadcast(self):
+        """
+        Creating a udp socket and sending offers message for Cliens.
+        The offer message contains: Magic cookie,Message type and Server port
+        """
         UDPServerSocket = socket(AF_INET, SOCK_DGRAM)
         UDPServerSocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-        #TODO......
         message= bytes.fromhex("feedbeef")
         message+= bytes.fromhex("02")
         message+=self.serverPort.to_bytes(2,byteorder='big')
-        threading.Timer(1.0, self.udp_broadcast).start()
-        UDPServerSocket.sendto(message, ('<broadcast>',self.UdpPort))
+        threading.Timer(1.0, self.udp_broadcast).start() # every second we create the a new message
+        UDPServerSocket.sendto(message, ('<broadcast>',self.UdpPort)) # send the message
         print("Server started,listening on IP address "+str(self.serverIP)+"\n")
 
-
     def create_Socket_TCP(self):
+        """
+        Responsible for managing communications from the Server side:
+        Creating a TCP socket and accept the Client requests.
+        After a request is received calls the function that start the game
+        """
         self.Game=True
         self.group_number=0
         self.all_teams={}
@@ -41,14 +48,19 @@ class Server():
             try:
                 connection, address = TCPServerSocket.accept()
                 self.all_teams[connection] =["",0,0]
-                start_new_thread(self.get_client_name, (connection,))
+                start_new_thread(self.get_client_name, (connection,))# Calling to the function that responsible for receiving new cliens
             except:
                 break
-        #TODO
         self.start_game(TCPServerSocket)
 
 
     def get_client_name(self, connection):
+        """
+        Receiving the clients names and dividing them into groups at random
+        (each client is treated separately)
+        :param connection socket :
+        :return:
+        """
         try:
             data = connection.recv(self.bufferSize)
             if data:
@@ -66,6 +78,14 @@ class Server():
 
 
     def start_game(self,TCPServerSocket):
+        """
+        Responsible for managing the game:
+        creating a start game message
+        Calling to the function that responsible for running the game
+        Calling to the function that responsible for ending the game
+        :param TCP Server Socket:
+        :return:
+        """
         message="Welcome to Keyboard Spamming Battle Royale.\n "
         message+="Group 1:\n==\n "
         for val in self.all_teams.values():
@@ -77,7 +97,7 @@ class Server():
                 message+=str(val[0])+'\n\n'
         message+='Start pressing keys on your keyboard as fast as you can!!\n'
         for connection in self.all_teams.keys():
-            start_new_thread(self.run_game, (connection,message,))
+            start_new_thread(self.run_game, (connection,message,)) # Calling to the function that responsible for running the game with threads
         time.sleep(10)
         self.Game=False
         for connection in self.all_teams.keys():
@@ -89,6 +109,12 @@ class Server():
         print("Game over, sending out offer requests...")
 
     def run_game(self,connection,message):
+        """
+        sending the start game message for a client
+        Gets the client last typing and add it
+        :param connection socket :
+        :param message:
+        """
         connection.send(message.encode('utf-8'))
         while self.Game:
             try:
@@ -100,6 +126,11 @@ class Server():
                 break
 
     def resultsGame(self,connection):
+        """
+        Calculates the results of the game and sends it to the client
+        :param connection socket :
+        :return:
+        """
         max_g1=0
         max_g2=0
         winner=0
@@ -124,6 +155,10 @@ class Server():
         connection.send(message.encode('utf-8'))
 
     def run_server(self):
+        """
+         Responsible for the run of the Server
+         :return:
+         """
         while True:
             self.udp_broadcast()
             self.create_Socket_TCP()

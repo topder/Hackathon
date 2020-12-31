@@ -9,19 +9,22 @@ import select
 import tty
 import termios
 
-
 class Client():
-    def __init__(self):
-        self.clientPort = 13119
+    def __init__(self,team_name):
+        self.clientPort = 13117
         self.bufferSize = 2048
         self.serverIP = ""
         self.serverPort = ""
         self.connected = False
-        self.name = "AA"
+        self.name = team_name
         self.stop_game = False
         self.clientSocket = None
 
     def receive_message(self):
+        """
+        Creating a udp socket and waiting for server broadcast message.
+        Checks whether the received message is in the correct format.
+        """
         while True:
             client=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
@@ -42,6 +45,12 @@ class Client():
                 print("")
 
     def ConnectingToAServer(self):
+        """
+        Responsible for managing communications from the client side:
+        Creating a TCP socket and Trying to connect to the server.
+        If the connection is successful, the client sends a message containing his name
+        There is a call to a function that starts the game and at the end of the game there is a call to a function that ends the game
+        """
         print("Received offer from: " + str(self.serverIP) + " ,attempting to connect... ")
         self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
@@ -55,17 +64,26 @@ class Client():
             print("")
 
     def End_Game(self, client):
+        """
+        Gets the results of the game and prints them
+        :param client socket :
+        """
         data = client.recv(self.bufferSize)
         data = data.decode('UTF-8')
         print(data)
         print("Server disconnected, listening for offer requests...")
 
 
-
     def isData(self):
         return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
 
     def GameMode(self, client):
+        """
+        The course of the game:
+        After each press on the keyboard a message is sent to the server.
+        :param client socket :
+        :return:
+        """
         start_time=time.time()
         old_settings = termios.tcgetattr(sys.stdin)
         try:
@@ -82,6 +100,10 @@ class Client():
 
 
     def startClient(self):
+        """
+        Responsible for the run of the Client
+        :return:
+        """
         while True:
             print("Client started, listening for offer requests...")
             self.receive_message()
