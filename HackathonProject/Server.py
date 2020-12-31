@@ -7,10 +7,10 @@ from scapy.all import get_if_addr
 
 #UDP server
 class Server():
-    def __init__(self,serverPort):
+    def __init__(self,serverPort,udp_port):
         self.serverIP= get_if_addr("eth1")
         self.serverPort = serverPort
-        self.UdpPort=13117
+        self.UdpPort=udp_port
         self.Game=False
         self.bufferSize = 2048
         self.group_number=0
@@ -164,6 +164,6 @@ class Server():
             self.create_Socket_TCP()
 
 
-s=Server()
+s=Server(2056,13117)
 s.run_server()
 

@@ -16,12 +16,11 @@ class color:
 
 
 class Client():
-    def __init__(self,team_name):
-        self.clientPort = 13117
+    def __init__(self,team_name, client_port):
+        self.clientPort = client_port
         self.bufferSize = 2048
         self.serverIP = ""
         self.serverPort = ""
-        self.connected = False
         self.name = team_name
         self.stop_game = False
         self.clientSocket = None
@@ -115,7 +114,7 @@ class Client():
             self.receive_message()
 
 
-c=Client()
+c=Client("AA",13117)
 c.startClient()
 
 
